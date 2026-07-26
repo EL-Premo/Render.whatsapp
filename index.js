@@ -5,7 +5,7 @@ const qrcode = require('qrcode-terminal');
 const app = express();
 app.use(express.json());
 
-// إعداد الواتساب ليعمل بسلاسة على خوادم Render
+// إعداد الواتساب ليعمل بسلاسة على خوادم Render عبر Docker
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -17,17 +17,19 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--single-process', // يقلل استهلاك الرام
+            '--single-process', // مهم جداً لتقليل استهلاك الرام في الخطة المجانية
             '--disable-gpu'
         ]
     }
 });
 
+// عرض كود QR في موجه الأوامر (Logs)
 client.on('qr', (qr) => {
     console.log('====== قم بمسح كود QR التالي ======');
     qrcode.generate(qr, { small: true });
 });
 
+// رسالة تأكيد عند نجاح الاتصال
 client.on('ready', () => {
     console.log('✅ تم الاتصال بحساب الواتساب بنجاح! الـ API جاهز.');
 });
@@ -41,7 +43,10 @@ app.post('/api/check', async (req, res) => {
     }
 
     try {
+        // إضافة اللاحقة الخاصة بواتساب للرقم
         const chatId = `${phone}@c.us`; 
+        
+        // فحص ما إذا كان الرقم موجوداً في واتساب
         const isRegistered = await client.isRegisteredUser(chatId);
         
         res.json({ 
@@ -56,10 +61,11 @@ app.post('/api/check', async (req, res) => {
     }
 });
 
+// بدء تشغيل الواتساب
 client.initialize();
 
-// استخدام المنفذ الذي يحدده Render أو 3000 محلياً
+// استخدام المنفذ الذي يحدده Render، مع السماح بالاتصال الخارجي عبر '0.0.0.0'
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 الخادم يعمل الآن على المنفذ ${PORT}`);
 });
